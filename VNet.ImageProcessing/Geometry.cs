@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Drawing.Imaging;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+#pragma warning disable CA1416
 
-namespace VNet.ImageProcessing.Geometric
+namespace VNet.ImageProcessing
 {
-    public class Class1
+    public class Geometry
     {
         public static Bitmap FlipHorizontal(Bitmap source)
         {
@@ -49,7 +45,38 @@ namespace VNet.ImageProcessing.Geometric
 
         public static Bitmap FlipVertical(Bitmap source)
         {
-            // This method is similar to FlipHorizontal but you'll swap the 'y' coordinates instead of the 'x' coordinates.
+            var returnBitmap = new Bitmap(source.Width, source.Height);
+
+            var sourceData = source.LockBits(new Rectangle(0, 0, source.Width, source.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var destData = returnBitmap.LockBits(new Rectangle(0, 0, returnBitmap.Width, returnBitmap.Height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            var stride = sourceData.Stride;
+
+            unsafe
+            {
+                var sourcePtr = (byte*)sourceData.Scan0;
+                var destPtr = (byte*)destData.Scan0;
+
+                for (var y = 0; y < source.Height; y++)
+                {
+                    var destY = source.Height - y - 1;
+
+                    for (var x = 0; x < source.Width; x++)
+                    {
+                        var sourcePixel = sourcePtr + y * stride + x * 3;
+                        var destPixel = destPtr + destY * stride + x * 3;
+
+                        destPixel[0] = sourcePixel[0];
+                        destPixel[1] = sourcePixel[1];
+                        destPixel[2] = sourcePixel[2];
+                    }
+                }
+            }
+
+            source.UnlockBits(sourceData);
+            returnBitmap.UnlockBits(destData);
+
+            return returnBitmap;
         }
 
         public static Bitmap Rotate90Degrees(Bitmap source)
@@ -71,11 +98,10 @@ namespace VNet.ImageProcessing.Geometric
                 {
                     for (var y = 0; y < source.Height; y++)
                     {
-                        var destX = y;
                         var destY = source.Width - x - 1;
 
                         var sourcePixel = sourcePtr + y * strideSource + x * 3;
-                        var destPixel = destPtr + destY * strideDest + destX * 3;
+                        var destPixel = destPtr + destY * strideDest + y * 3;
 
                         destPixel[0] = sourcePixel[0]; // Blue
                         destPixel[1] = sourcePixel[1]; // Green
@@ -110,10 +136,10 @@ namespace VNet.ImageProcessing.Geometric
                     var srcX = (int)(x / scaleFactor);
                     var srcY = (int)(y / scaleFactor);
 
-                    var sourcePixel = sourceData.Scan0 + (srcY * sourceData.Stride) + (srcX * bytesPerPixel);
+                    var sourcePixel = sourceData.Scan0 + srcY * sourceData.Stride + srcX * bytesPerPixel;
                     Marshal.Copy(sourcePixel, pixelBuffer, 0, bytesPerPixel);
 
-                    var destPixel = resultData.Scan0 + (y * resultData.Stride) + (x * bytesPerPixel);
+                    var destPixel = resultData.Scan0 + y * resultData.Stride + x * bytesPerPixel;
                     Marshal.Copy(pixelBuffer, 0, destPixel, bytesPerPixel);
                 }
             }
@@ -142,8 +168,8 @@ namespace VNet.ImageProcessing.Geometric
             for (var y = 0; y < cropRectangle.Height; y++)
             {
                 var rowData = new byte[cropRectangle.Width * bytesPerPixel];
-                Marshal.Copy(sourcePosition + (y * sourceStride), rowData, 0, cropRectangle.Width * bytesPerPixel);
-                Marshal.Copy(rowData, 0, destPosition + (y * destStride), cropRectangle.Width * bytesPerPixel);
+                Marshal.Copy(sourcePosition + y * sourceStride, rowData, 0, cropRectangle.Width * bytesPerPixel);
+                Marshal.Copy(rowData, 0, destPosition + y * destStride, cropRectangle.Width * bytesPerPixel);
             }
 
             source.UnlockBits(sourceData);
@@ -151,6 +177,5 @@ namespace VNet.ImageProcessing.Geometric
 
             return result;
         }
-
     }
 }

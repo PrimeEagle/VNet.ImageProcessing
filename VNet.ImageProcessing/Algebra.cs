@@ -1,12 +1,13 @@
 ﻿using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+#pragma warning disable CA1416
 
-namespace VNet.ImageProcessing.Algebra
+namespace VNet.ImageProcessing
 {
-    public class Class1
+    public static class Algebra
     {
-        public static Bitmap AddBitmaps(Bitmap img1, Bitmap img2)
+        public static Bitmap Add(Bitmap img1, Bitmap img2)
         {
             var width = img1.Width;
             var height = img1.Height;
@@ -27,7 +28,7 @@ namespace VNet.ImageProcessing.Algebra
             for (var i = 0; i < bytes; i++)
             {
                 var val = buffer1[i] + buffer2[i];
-                resultBuffer[i] = (byte)Math.Min(val, 255);  // Ensure values are clamped to [0, 255]
+                resultBuffer[i] = ImageUtil.Clamp(val);
             }
 
             Marshal.Copy(resultBuffer, 0, resultData.Scan0, bytes);
@@ -39,37 +40,108 @@ namespace VNet.ImageProcessing.Algebra
             return result;
         }
 
-        public static Bitmap SubtractBitmaps(Bitmap img1, Bitmap img2)
+        public static Bitmap Subtract(Bitmap img1, Bitmap img2)
         {
-            // Similar structure to AddBitmaps.
-            // Replace the core loop logic with:
-            // int val = buffer1[i] - buffer2[i];
-            // resultBuffer[i] = (byte)Math.Max(val, 0);  // Ensure values are clamped to [0, 255]
-            // ...
+            var width = img1.Width;
+            var height = img1.Height;
 
-            // Return the result
+            var result = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+            var data1 = img1.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var data2 = img2.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var resultData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            var bytes = Math.Abs(data1.Stride) * height;
+            var buffer1 = new byte[bytes];
+            var buffer2 = new byte[bytes];
+            var resultBuffer = new byte[bytes];
+
+            Marshal.Copy(data1.Scan0, buffer1, 0, bytes);
+            Marshal.Copy(data2.Scan0, buffer2, 0, bytes);
+
+            for (var i = 0; i < bytes; i++)
+            {
+                var val = buffer1[i] - buffer2[i];
+                resultBuffer[i] = ImageUtil.Clamp(val);
+            }
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, bytes);
+
+            img1.UnlockBits(data1);
+            img2.UnlockBits(data2);
+            result.UnlockBits(resultData);
+
+            return result;
         }
 
-        public static Bitmap MultiplyBitmaps(Bitmap img1, Bitmap img2)
+        public static Bitmap Multiply(Bitmap img1, Bitmap img2)
         {
-            // Similar structure to AddBitmaps.
-            // Replace the core loop logic with:
-            // int val = (buffer1[i] * buffer2[i]) / 255;  // Normalize to [0, 255]
-            // resultBuffer[i] = (byte)val;
-            // ...
+            var width = img1.Width;
+            var height = img1.Height;
 
-            // Return the result
+            var result = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+            var data1 = img1.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var data2 = img2.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var resultData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            var bytes = Math.Abs(data1.Stride) * height;
+            var buffer1 = new byte[bytes];
+            var buffer2 = new byte[bytes];
+            var resultBuffer = new byte[bytes];
+
+            Marshal.Copy(data1.Scan0, buffer1, 0, bytes);
+            Marshal.Copy(data2.Scan0, buffer2, 0, bytes);
+
+            for (var i = 0; i < bytes; i++)
+            {
+                var val = (buffer1[i] * buffer2[i]) / 255;
+                resultBuffer[i] = (byte)val;
+            }
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, bytes);
+
+            img1.UnlockBits(data1);
+            img2.UnlockBits(data2);
+            result.UnlockBits(resultData);
+
+            return result;
         }
 
-        public static Bitmap DivideBitmaps(Bitmap img1, Bitmap img2)
+        public static Bitmap Divide(Bitmap img1, Bitmap img2)
         {
-            // Similar structure to AddBitmaps.
-            // Replace the core loop logic with:
-            // int val = buffer2[i] == 0 ? 255 : (buffer1[i] * 255) / buffer2[i];  // Avoid division by zero and normalize to [0, 255]
-            // resultBuffer[i] = (byte)val;
-            // ...
+            var width = img1.Width;
+            var height = img1.Height;
 
-            // Return the result
+            var result = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+            var data1 = img1.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var data2 = img2.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var resultData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            var bytes = Math.Abs(data1.Stride) * height;
+            var buffer1 = new byte[bytes];
+            var buffer2 = new byte[bytes];
+            var resultBuffer = new byte[bytes];
+
+            Marshal.Copy(data1.Scan0, buffer1, 0, bytes);
+            Marshal.Copy(data2.Scan0, buffer2, 0, bytes);
+
+            for (var i = 0; i < bytes; i++)
+            {
+                var val = buffer2[i] == 0 ? 255 : (buffer1[i] * 255) / buffer2[i];
+                resultBuffer[i] = (byte)val;
+            }
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, bytes);
+
+            img1.UnlockBits(data1);
+            img2.UnlockBits(data2);
+            result.UnlockBits(resultData);
+
+            return result;
+        }
+
+        public static Bitmap Union(Bitmap img1, Bitmap img2)
+        {
+            return BitwiseOr(img1, img2);
         }
 
         public static Bitmap BitwiseAnd(Bitmap img1, Bitmap img2)
@@ -104,7 +176,7 @@ namespace VNet.ImageProcessing.Algebra
 
             for (var i = 0; i < bytes; i++)
             {
-                resultBuffer[i] = (byte)(~buffer[i]);
+                resultBuffer[i] = (byte)~buffer[i];
             }
 
             Marshal.Copy(resultBuffer, 0, resultData.Scan0, bytes);
@@ -153,7 +225,7 @@ namespace VNet.ImageProcessing.Algebra
             return result;
         }
 
-        public static Bitmap ApplyThreshold(Bitmap image, byte threshold, byte highValue = 255, byte lowValue = 0)
+        public static Bitmap Threshold(Bitmap image, byte threshold, byte highValue = 255, byte lowValue = 0)
         {
             var width = image.Width;
             var height = image.Height;
@@ -194,7 +266,7 @@ namespace VNet.ImageProcessing.Algebra
             return result;
         }
 
-        public static Bitmap ApplyDistanceTransform(Bitmap image)
+        public static Bitmap DistanceTransform(Bitmap image)
         {
             var width = image.Width;
             var height = image.Height;
@@ -209,8 +281,8 @@ namespace VNet.ImageProcessing.Algebra
                 {
                     if (image.GetPixel(x, y).R == 255) // White pixel
                     {
-                        var up = (y > 0) ? distance[x, y - 1] + 1 : int.MaxValue;
-                        var left = (x > 0) ? distance[x - 1, y] + 1 : int.MaxValue;
+                        var up = y > 0 ? distance[x, y - 1] + 1 : int.MaxValue;
+                        var left = x > 0 ? distance[x - 1, y] + 1 : int.MaxValue;
                         distance[x, y] = Math.Min(up, left);
                     }
                     else
@@ -225,8 +297,8 @@ namespace VNet.ImageProcessing.Algebra
             {
                 for (var x = width - 1; x >= 0; x--)
                 {
-                    var down = (y < height - 1) ? distance[x, y + 1] + 1 : int.MaxValue;
-                    var right = (x < width - 1) ? distance[x + 1, y] + 1 : int.MaxValue;
+                    var down = y < height - 1 ? distance[x, y + 1] + 1 : int.MaxValue;
+                    var right = x < width - 1 ? distance[x + 1, y] + 1 : int.MaxValue;
                     distance[x, y] = Math.Min(distance[x, y], Math.Min(down, right));
                 }
             }
@@ -243,6 +315,62 @@ namespace VNet.ImageProcessing.Algebra
             }
 
             return result;
+        }
+
+        public static Bitmap Intersect(Bitmap image1, Bitmap image2, byte threshold)
+        {
+            var width = image1.Width;
+            var height = image1.Height;
+            var result = new Bitmap(width, height);
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var pixel1 = image1.GetPixel(x, y);
+                    var pixel2 = image2.GetPixel(x, y);
+
+                    // If both pixels are white, set the result pixel to white
+                    if (pixel1.R > threshold && pixel2.R > threshold)
+                    {
+                        result.SetPixel(x, y, Color.White);
+                    }
+                    else
+                    {
+                        result.SetPixel(x, y, Color.Black);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        public static bool AreEqual(Bitmap img1, Bitmap img2)
+        {
+            var data1 = img1.LockBits(new Rectangle(0, 0, img1.Width, img1.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var data2 = img2.LockBits(new Rectangle(0, 0, img2.Width, img2.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+
+            var bytes = Math.Abs(data1.Stride) * img1.Height;
+            var buffer1 = new byte[bytes];
+            var buffer2 = new byte[bytes];
+
+            Marshal.Copy(data1.Scan0, buffer1, 0, bytes);
+            Marshal.Copy(data2.Scan0, buffer2, 0, bytes);
+
+            for (var i = 0; i < bytes; i++)
+            {
+                if (buffer1[i] != buffer2[i])
+                {
+                    img1.UnlockBits(data1);
+                    img2.UnlockBits(data2);
+                    return false;
+                }
+            }
+
+            img1.UnlockBits(data1);
+            img2.UnlockBits(data2);
+
+            return true;
         }
     }
 }
