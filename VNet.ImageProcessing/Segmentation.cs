@@ -22,7 +22,7 @@ namespace VNet.ImageProcessing
 
             unsafe
             {
-                var ptr = (byte*) inputData.Scan0;
+                var ptr = (byte*)inputData.Scan0;
 
                 // First pass
                 for (var y = 0; y < height; y++)
@@ -121,19 +121,20 @@ namespace VNet.ImageProcessing
             var bmpData = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
 
             var blobs = new Dictionary<Color, BlobData>();
+            var processedColors = new HashSet<Color>();
 
             unsafe
             {
-                var ptr = (byte*) bmpData.Scan0;
+                var ptr = (byte*)bmpData.Scan0;
 
                 for (var y = 0; y < bmpData.Height; y++)
                 {
                     for (var x = 0; x < bmpData.Width; x++)
                     {
                         var idx = y * bmpData.Stride + x * 3;
-                        var currentColor = Color.FromArgb(ptr[idx + 2], ptr[idx + 1], ptr[idx]); // RGB
+                        var currentColor = Color.FromArgb(ptr[idx + 2], ptr[idx + 1], ptr[idx]);
 
-                        if (currentColor == Color.Black) continue; // skip background
+                        if (currentColor == Color.Black || processedColors.Contains(currentColor)) continue;  // skip background and already processed blobs
 
                         if (!blobs.ContainsKey(currentColor))
                         {
@@ -141,8 +142,10 @@ namespace VNet.ImageProcessing
                             {
                                 Area = 0,
                                 Centroid = new Point(0, 0),
-                                BoundingBox = new Rectangle(x, y, 1, 1)
+                                BoundingBox = new Rectangle(x, y, 1, 1),
+                                BoundaryPoints = GetBoundaryPoints(img, new Point(x, y), currentColor)
                             };
+                            processedColors.Add(currentColor);
                         }
 
                         var blob = blobs[currentColor];
@@ -162,6 +165,69 @@ namespace VNet.ImageProcessing
             }
 
             return blobs;
+        }
+
+        private static List<Point> GetBoundaryPoints(Bitmap img, Point start, Color targetColor)
+        {
+            // Moore-Neighbor Tracing algorithm
+            var boundary = new List<Point>();
+            var current = start;
+            var next = start;
+            var previous = start;
+
+            do
+            {
+                boundary.Add(current);
+                var neighbors = Get8Neighbors(current);
+
+                var startIndex = GetNeighborIndex(previous, current);
+                for (var i = 0; i < 8; i++)
+                {
+                    var index = (startIndex + i) % 8;
+                    if (img.GetPixel(neighbors[index].X, neighbors[index].Y) == targetColor)
+                    {
+                        next = neighbors[index];
+                        previous = current;
+                        break;
+                    }
+                }
+
+                if (next == current)
+                    break;  // isolated pixel
+
+                current = next;
+
+            } while (current != start);
+
+            return boundary;
+        }
+
+        private static Point[] Get8Neighbors(Point p)
+        {
+            return new Point[]
+            {
+                new Point(p.X, p.Y - 1),      // Top
+                new Point(p.X + 1, p.Y - 1),  // Top-Right
+                new Point(p.X + 1, p.Y),      // Right
+                new Point(p.X + 1, p.Y + 1),  // Bottom-Right
+                new Point(p.X, p.Y + 1),      // Bottom
+                new Point(p.X - 1, p.Y + 1),  // Bottom-Left
+                new Point(p.X - 1, p.Y),      // Left
+                new Point(p.X - 1, p.Y - 1)   // Top-Left
+            };
+        }
+
+        private static int GetNeighborIndex(Point previous, Point current)
+        {
+            var diff = new Point(current.X - previous.X, current.Y - previous.Y);
+            if (diff == new Point(0, -1)) return 0;
+            if (diff == new Point(1, -1)) return 1;
+            if (diff == new Point(1, 0)) return 2;
+            if (diff == new Point(1, 1)) return 3;
+            if (diff == new Point(0, 1)) return 4;
+            if (diff == new Point(-1, 1)) return 5;
+            if (diff == new Point(-1, 0)) return 6;
+            return diff == new Point(-1, -1) ? 7 : 0; // default to 0 if no match (shouldn't happen in proper context)
         }
 
         public static (Dictionary<Color, BlobData>, Bitmap) FilterBlobs(Bitmap img, Dictionary<Color, BlobData> blobs, int areaFilterValue, FilterType filterType)
