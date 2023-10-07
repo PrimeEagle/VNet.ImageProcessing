@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace VNet.ImageProcessing
 {
-    public class Enhancement
+    public static class Enhancement
     {
         public static Bitmap GaussianBlur(Bitmap source, int kernelSize, double sigma)
         {
@@ -182,7 +182,6 @@ namespace VNet.ImageProcessing
             return result;
         }
 
-
         public static Bitmap AdjustContrast(Bitmap source, double contrastValue)
         {
             var result = new Bitmap(source.Width, source.Height);
@@ -207,7 +206,6 @@ namespace VNet.ImageProcessing
 
             return result;
         }
-
 
         public static Bitmap AdjustGamma(Bitmap source, double gammaValue)
         {
@@ -239,7 +237,7 @@ namespace VNet.ImageProcessing
 
             return result;
         }
-
+        
         public static Bitmap EdgeEnhancement(Bitmap source)
         {
             // Define a Laplacian kernel
@@ -295,32 +293,6 @@ namespace VNet.ImageProcessing
             }
 
             Marshal.Copy(resultBuffer, 0, resultData.Scan0, resultBuffer.Length);
-            source.UnlockBits(sourceData);
-            result.UnlockBits(resultData);
-
-            return result;
-        }
-
-        public static Bitmap ColorCorrection(Bitmap source, double redMultiplier, double greenMultiplier, double blueMultiplier)
-        {
-            var result = new Bitmap(source.Width, source.Height);
-
-            var sourceData = source.LockBits(new Rectangle(0, 0, source.Width, source.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-            var resultData = result.LockBits(new Rectangle(0, 0, source.Width, source.Height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
-
-            var bytesPerPixel = Image.GetPixelFormatSize(source.PixelFormat) / 8;
-            var pixelBuffer = new byte[sourceData.Stride * source.Height];
-
-            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
-
-            for (var i = 0; i < pixelBuffer.Length; i += bytesPerPixel)
-            {
-                pixelBuffer[i] = ImageUtil.Clamp((int)(pixelBuffer[i] * blueMultiplier));
-                pixelBuffer[i + 1] = ImageUtil.Clamp((int)(pixelBuffer[i + 1] * greenMultiplier));
-                pixelBuffer[i + 2] = ImageUtil.Clamp((int)(pixelBuffer[i + 2] * redMultiplier));
-            }
-
-            Marshal.Copy(pixelBuffer, 0, resultData.Scan0, pixelBuffer.Length);
             source.UnlockBits(sourceData);
             result.UnlockBits(resultData);
 
@@ -390,6 +362,51 @@ namespace VNet.ImageProcessing
             }
 
             return inverted;
+        }
+
+        public static Bitmap Difference(Bitmap input)
+        {
+            var width = input.Width;
+            var height = input.Height;
+            var result = new Bitmap(width, height);
+
+            var inputData = input.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var resultData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            unsafe
+            {
+                var inputPtr = (byte*)inputData.Scan0;
+                var resultPtr = (byte*)resultData.Scan0;
+
+                for (var y = 0; y < height; y++)
+                {
+                    for (var x = 0; x < width; x++)
+                    {
+                        var idx = y * inputData.Stride + x * 3;
+
+                        var currentBlue = inputPtr[idx];
+                        var currentGreen = inputPtr[idx + 1];
+                        var currentRed = inputPtr[idx + 2];
+
+                        var rightBlue = (x < width - 1) ? inputPtr[idx + 3] : currentBlue;
+                        var rightGreen = (x < width - 1) ? inputPtr[idx + 4] : currentGreen;
+                        var rightRed = (x < width - 1) ? inputPtr[idx + 5] : currentRed;
+
+                        var bottomBlue = (y < height - 1) ? inputPtr[idx + inputData.Stride] : currentBlue;
+                        var bottomGreen = (y < height - 1) ? inputPtr[idx + inputData.Stride + 1] : currentGreen;
+                        var bottomRed = (y < height - 1) ? inputPtr[idx + inputData.Stride + 2] : currentRed;
+
+                        resultPtr[idx] = (byte)Math.Abs(currentBlue - (rightBlue + bottomBlue) / 2);
+                        resultPtr[idx + 1] = (byte)Math.Abs(currentGreen - (rightGreen + bottomGreen) / 2);
+                        resultPtr[idx + 2] = (byte)Math.Abs(currentRed - (rightRed + bottomRed) / 2);
+                    }
+                }
+            }
+
+            input.UnlockBits(inputData);
+            result.UnlockBits(resultData);
+
+            return result;
         }
     }
 }

@@ -2,29 +2,64 @@
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 // ReSharper disable MemberCanBePrivate.Global
+// ReSharper disable UnusedMember.Global
 #pragma warning disable CA1416
 
 namespace VNet.ImageProcessing
 {
     public static class Morphology
     {
-        public static Bitmap Erode(Bitmap img)
+        public static Bitmap Erode(Bitmap img, Bitmap? kernel = null)
         {
-            return Morphology.PerformMorphologicalOperation(img, true);
+            return Morphology.PerformMorphologicalOperation(img, true, 128, kernel);
         }
 
-        public static Bitmap Dilate(Bitmap img)
+        public static Bitmap Dilate(Bitmap img, Bitmap? kernel = null)
         {
-            return Morphology.PerformMorphologicalOperation(img, false);
+            return Morphology.PerformMorphologicalOperation(img, false, 128, kernel);
         }
 
-        private static Bitmap PerformMorphologicalOperation(Bitmap img, bool isErosion, byte threshold = 128, int kernelSize = 5)
+        private static Bitmap PerformMorphologicalOperation(Bitmap img, bool isErosion, byte threshold = 128, Bitmap? kernel = null)
         {
+            int kWidth, kHeight, kHalfWidth, kHalfHeight;
+            bool[,] kernelValues;
+
+            if (kernel != null)
+            {
+                kWidth = kernel.Width;
+                kHeight = kernel.Height;
+                kHalfWidth = kWidth / 2;
+                kHalfHeight = kHeight / 2;
+                kernelValues = new bool[kWidth, kHeight];
+
+                for (var i = 0; i < kWidth; i++)
+                {
+                    for (var j = 0; j < kHeight; j++)
+                    {
+                        var c = kernel.GetPixel(i, j);
+                        var avg = (byte)((c.R + c.G + c.B) / 3);
+                        kernelValues[i, j] = avg >= threshold;
+                    }
+                }
+            }
+            else
+            {
+                kWidth = kHeight = 5;
+                kHalfWidth = kHalfHeight = kWidth / 2;
+                kernelValues = new bool[kWidth, kHeight];
+
+                for (var i = 0; i < kWidth; i++)
+                {
+                    for (var j = 0; j < kHeight; j++)
+                    {
+                        kernelValues[i, j] = true;
+                    }
+                }
+            }
+
             var width = img.Width;
             var height = img.Height;
             var resultBitmap = new Bitmap(width, height);
-
-            var kHalf = kernelSize / 2;
 
             var bmpData = img.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
             var pixelData = new byte[Math.Abs(bmpData.Stride) * height];
@@ -39,9 +74,10 @@ namespace VNet.ImageProcessing
                 for (var x = 0; x < width; x++)
                 {
                     var operationMet = isErosion;
-                    for (var kx = -kHalf; kx <= kHalf && operationMet == isErosion; kx++)
+
+                    for (var kx = -kHalfWidth; kx <= kHalfWidth && operationMet == isErosion; kx++)
                     {
-                        for (var ky = -kHalf; ky <= kHalf && operationMet == isErosion; ky++)
+                        for (var ky = -kHalfHeight; ky <= kHalfHeight && operationMet == isErosion; ky++)
                         {
                             var posX = x + kx;
                             var posY = y + ky;
@@ -54,10 +90,13 @@ namespace VNet.ImageProcessing
                             var index = posY * bmpData.Stride + posX * 3;
                             var avg = (byte)((pixelData[index] + pixelData[index + 1] + pixelData[index + 2]) / 3);
 
+                            var imagePixelIsForeground = avg >= threshold;
+                            var kernelPixelIsForeground = kernelValues[kx + kHalfWidth, ky + kHalfHeight];
+
                             operationMet = isErosion switch
                             {
-                                true when avg < threshold => false,
-                                false when avg >= threshold => true,
+                                true when !(imagePixelIsForeground && kernelPixelIsForeground) => false,
+                                false when imagePixelIsForeground && kernelPixelIsForeground => true,
                                 _ => operationMet
                             };
                         }
@@ -77,22 +116,22 @@ namespace VNet.ImageProcessing
             return resultBitmap;
         }
 
-        public static Bitmap Open(Bitmap img)
+        public static Bitmap Open(Bitmap img, Bitmap kernel = null)
         {
-            var erodedImage = Morphology.Erode(img);
-            return Morphology.Dilate(erodedImage);
+            var erodedImage = Morphology.Erode(img, kernel);
+            return Morphology.Dilate(erodedImage, kernel);
         }
 
-        public static Bitmap Close(Bitmap img)
+        public static Bitmap Close(Bitmap img, Bitmap kernel = null)
         {
-            var dilatedImage = Morphology.Dilate(img);
-            return Morphology.Erode(dilatedImage);
+            var dilatedImage = Morphology.Dilate(img, kernel);
+            return Morphology.Erode(dilatedImage, kernel);
         }
 
-        public static Bitmap MorphologicalGradient(Bitmap img)
+        public static Bitmap MorphologicalGradient(Bitmap img, Bitmap kernel = null)
         {
-            var dilatedImage = Dilate(img);
-            var erodedImage = Erode(img);
+            var dilatedImage = Dilate(img, kernel);
+            var erodedImage = Erode(img, kernel);
 
             var width = img.Width;
             var height = img.Height;
@@ -135,61 +174,16 @@ namespace VNet.ImageProcessing
             return Algebra.Subtract(closedImage, img);
         }
 
-        private static Bitmap ErodeUsingKernel(Bitmap img, Bitmap kernel, byte threshold = 128)
-        {
-            var width = img.Width;
-            var height = img.Height;
-            var erodedBitmap = new Bitmap(width, height);
-
-            var kHalfWidth = kernel.Width / 2;
-            var kHalfHeight = kernel.Height / 2;
-
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    var isEroded = false;
-
-                    for (var kx = -kHalfWidth; kx <= kHalfWidth && !isEroded; kx++)
-                    {
-                        for (var ky = -kHalfHeight; ky <= kHalfHeight && !isEroded; ky++)
-                        {
-                            var posX = x + kx;
-                            var posY = y + ky;
-
-                            // Check the bounds for the kernel
-                            if (posX < 0 || posX >= width || posY < 0 || posY >= height)
-                            {
-                                continue;
-                            }
-
-                            var kernelColor = kernel.GetPixel(kx + kHalfWidth, ky + kHalfHeight);
-                            var imageColor = img.GetPixel(posX, posY);
-
-                            if (kernelColor.R > threshold && imageColor.R < threshold)
-                            {
-                                isEroded = true;
-                            }
-                        }
-                    }
-
-                    erodedBitmap.SetPixel(x, y, isEroded ? Color.Black : Color.White);
-                }
-            }
-
-            return erodedBitmap;
-        }
-
-        public static Bitmap PerformHitOrMiss(Bitmap img, Bitmap hitKernel, Bitmap missKernel)
+        public static Bitmap HitOrMiss(Bitmap img, Bitmap hitKernel, Bitmap missKernel)
         {
             // Erode the original image with the "hit" kernel
-            var hitResult = ErodeUsingKernel(img, hitKernel);
+            var hitResult = Erode(img, hitKernel);
 
             // Invert the original image
             var invertedImage = Enhancement.Invert(img);
 
             // Erode the inverted image with the "miss" kernel
-            var missResult = ErodeUsingKernel(img, missKernel);
+            var missResult = Erode(invertedImage, missKernel);
 
             // Take the intersection of hitResult and missResult
             var result = Algebra.Intersect(hitResult, missResult, 128);
@@ -303,13 +297,13 @@ namespace VNet.ImageProcessing
 
         public static Bitmap Thin(Bitmap img, Bitmap hitKernel, Bitmap missKernel)
         {
-            var hitOrMissResult = PerformHitOrMiss(img, hitKernel, missKernel);
+            var hitOrMissResult = HitOrMiss(img, hitKernel, missKernel);
             return Algebra.Subtract(img, hitOrMissResult);
         }
 
         public static Bitmap Thicken(Bitmap img, Bitmap hitKernel, Bitmap missKernel)
         {
-            var hitOrMissResult = PerformHitOrMiss(img, hitKernel, missKernel);
+            var hitOrMissResult = HitOrMiss(img, hitKernel, missKernel);
             return Algebra.Union(img, hitOrMissResult);
         }
 
@@ -349,12 +343,104 @@ namespace VNet.ImageProcessing
             for (var i = 0; i < 8; i++)
             {
                 missKernel.SetPixel(1 + neighborsX[i], 1 + neighborsY[i], Color.Black);
-                var result = PerformHitOrMiss(img, hitKernel, missKernel);
+                var result = HitOrMiss(img, hitKernel, missKernel);
                 if (i != 7)
                     missKernel.SetPixel(1 + neighborsX[i], 1 + neighborsY[i], Color.White);
             }
 
-            return PerformHitOrMiss(img, hitKernel, missKernel);
+            return HitOrMiss(img, hitKernel, missKernel);
+        }
+
+        public static Bitmap Threshold(Bitmap image, byte threshold, byte highValue = 255, byte lowValue = 0)
+        {
+            var width = image.Width;
+            var height = image.Height;
+            var result = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+
+            var imageData = image.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            var resultData = result.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            var bytes = Math.Abs(imageData.Stride) * height;
+            var buffer = new byte[bytes];
+            var resultBuffer = new byte[bytes];
+
+            Marshal.Copy(imageData.Scan0, buffer, 0, bytes);
+
+            for (var i = 0; i < bytes; i += 3) // Assuming 24bpp image
+            {
+                var grayValue = (byte)(0.3 * buffer[i + 2] + 0.59 * buffer[i + 1] + 0.11 * buffer[i]); // Convert to grayscale using common weights
+
+                if (grayValue >= threshold)
+                {
+                    resultBuffer[i] = highValue;
+                    resultBuffer[i + 1] = highValue;
+                    resultBuffer[i + 2] = highValue;
+                }
+                else
+                {
+                    resultBuffer[i] = lowValue;
+                    resultBuffer[i + 1] = lowValue;
+                    resultBuffer[i + 2] = lowValue;
+                }
+            }
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, bytes);
+
+            image.UnlockBits(imageData);
+            result.UnlockBits(resultData);
+
+            return result;
+        }
+
+        public static Bitmap DistanceTransform(Bitmap image)
+        {
+            var width = image.Width;
+            var height = image.Height;
+
+            // Intermediate array for storing raw distances.
+            var distance = new int[width, height];
+
+            // First pass
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    if (image.GetPixel(x, y).R == 255) // White pixel
+                    {
+                        var up = y > 0 ? distance[x, y - 1] + 1 : int.MaxValue;
+                        var left = x > 0 ? distance[x - 1, y] + 1 : int.MaxValue;
+                        distance[x, y] = Math.Min(up, left);
+                    }
+                    else
+                    {
+                        distance[x, y] = 0; // For black pixels
+                    }
+                }
+            }
+
+            // Second pass
+            for (var y = height - 1; y >= 0; y--)
+            {
+                for (var x = width - 1; x >= 0; x--)
+                {
+                    var down = y < height - 1 ? distance[x, y + 1] + 1 : int.MaxValue;
+                    var right = x < width - 1 ? distance[x + 1, y] + 1 : int.MaxValue;
+                    distance[x, y] = Math.Min(distance[x, y], Math.Min(down, right));
+                }
+            }
+
+            // Convert distances to grayscale image
+            var result = new Bitmap(width, height);
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var value = (byte)Math.Min(distance[x, y], 255); // Clamp to byte range
+                    result.SetPixel(x, y, Color.FromArgb(value, value, value));
+                }
+            }
+
+            return result;
         }
     }
 }

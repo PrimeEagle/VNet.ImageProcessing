@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace VNet.ImageProcessing
 {
-    public class Geometry
+    public static class Geometry
     {
         public static Bitmap FlipHorizontal(Bitmap source)
         {
