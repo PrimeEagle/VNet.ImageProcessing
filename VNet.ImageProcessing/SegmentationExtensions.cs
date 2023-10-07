@@ -8,4 +8,14 @@ public static class SegmentationExtensions
     {
         return Segmentation.ConnectedComponentAnalysis(img, connectivity);
     }
+
+    public static Dictionary<Color, BlobData> BlobCounter(this Bitmap img)
+    {
+        return Segmentation.BlobCounter(img);
+    }
+
+    public static (Dictionary<Color, BlobData>, Bitmap) FilterBlobs(this Bitmap img, Dictionary<Color, BlobData> blobs, int areaFilterValue, FilterType filterType)
+    {
+        return Segmentation.FilterBlobs(img, blobs, areaFilterValue, filterType);
+    }
 }

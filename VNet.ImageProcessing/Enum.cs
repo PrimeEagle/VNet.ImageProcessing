@@ -5,4 +5,11 @@
         FourNeighbors,
         EightNeighbors
     }
+
+    public enum FilterType
+    {
+        GreaterThan,
+        LessThan,
+        EqualTo
+    }
 }
