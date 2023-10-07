@@ -9,7 +9,7 @@ public static class ColorProcessingExtensions
         return ColorProcessing.ConvertToGrayscale(sourceBitmap, redWeight, greenWeight, blueWeight);
     }
 
-    public static Bitmap ColorCorrection(Bitmap sourceBitmap, double redMultiplier, double greenMultiplier, double blueMultiplier)
+    public static Bitmap ColorCorrection(this Bitmap sourceBitmap, double redMultiplier, double greenMultiplier, double blueMultiplier)
     {
         return ColorProcessing.ColorCorrection(sourceBitmap, redMultiplier, greenMultiplier, blueMultiplier);
     }
