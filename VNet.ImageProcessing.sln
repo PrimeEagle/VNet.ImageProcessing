@@ -7,6 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNet.ImageProcessing", "VNe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VNet.ImageProcessing.Tests", "VNet.ImageProcessing.Tests\VNet.ImageProcessing.Tests.csproj", "{2A9E6BF4-DE6D-4A5B-AF72-5F41A5597860}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".version", ".version", "{76E17A77-4F6D-4FE1-9A74-F0C50C962279}"
+	ProjectSection(SolutionItems) = preProject
+		.version\version.json = .version\version.json
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
