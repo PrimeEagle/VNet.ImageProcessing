@@ -1,46 +1,39 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	</PropertyGroup>
-
-	<PropertyGroup>
-		<PackageId>VNet.ImageProcessing</PackageId>
-		<Authors>PrimeEagle</Authors>
-		<Product>VNet.ImageProcessing</Product>
-		<Description>An image processing library that includes algebraic processing, color processing, enhancement, geometric processing, morphology, and segmentation.</Description>
-		<PackageTags>dotnet;dotnet-core;dotnet-library;image-processing</PackageTags>
-		<PackageReleaseNotes>Add NuGet metadata.</PackageReleaseNotes>
-		<PackageIcon>icon.png</PackageIcon>
-		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/PrimeEagle/VNet.ImageProcessing</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/PrimeEagle/VNet.ImageProcessing</RepositoryUrl>
-		<RepositoryType>git</RepositoryType>
-		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-		<TargetFramework>net8.0</TargetFramework>
-		<AssemblyName>VNet.ImageProcessing</AssemblyName>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<None Include="icon.png" Pack="true" PackagePath="" />
-	</ItemGroup>
-	
-	<ItemGroup>
-		<PackageReference Include="System.Drawing.Common" Version="8.0.0" />
-	</ItemGroup>
-
-	<PropertyGroup Condition="'$(ServerBuild)' != ''">
-	</PropertyGroup>
-
-	<ItemGroup Condition="'$(ServerBuild)' != ''">
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(ServerBuild)' == ''">
-	</ItemGroup>
-
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(ServerBuild)' == ''">
-		<Exec Command="xcopy /e /y &quot;$(TargetPath)&quot; &quot;D:\My Code\VNet bin\&quot;" />
-	</Target>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>VNet.ImageProcessing</PackageId>
+    <Authors>PrimeEagle</Authors>
+    <Product>VNet.ImageProcessing</Product>
+    <Description>An image processing library that includes algebraic processing, color processing, enhancement, geometric processing, morphology, and segmentation.</Description>
+    <PackageTags>dotnet;dotnet-core;dotnet-library;image-processing</PackageTags>
+    <PackageReleaseNotes>Add NuGet metadata.</PackageReleaseNotes>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/PrimeEagle/VNet.ImageProcessing</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/PrimeEagle/VNet.ImageProcessing</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>VNet.ImageProcessing</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath="" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(ServerBuild)' != ''">
+  </PropertyGroup>
+  <ItemGroup Condition="'$(ServerBuild)' != ''">
+  </ItemGroup>
+  <ItemGroup Condition="'$(ServerBuild)' == ''">
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(ServerBuild)' == ''">
+    <Exec Command="xcopy /e /y &quot;$(TargetPath)&quot; &quot;D:\My Code\VNet bin\&quot;" />
+  </Target>
 </Project>
