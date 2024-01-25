@@ -29,9 +29,9 @@
   </ItemGroup>
   <PropertyGroup Condition="'$(ServerBuild)' != ''">
   </PropertyGroup>
-  <ItemGroup Condition="'$(ServerBuild)' != ''">
+  <ItemGroup Condition="'$(ServerBuild)' == 'true'">
   </ItemGroup>
-  <ItemGroup Condition="'$(ServerBuild)' == ''">
+  <ItemGroup Condition="'$(ServerBuild)' == 'false' Or '$(ServerBuild)' == ''">
   </ItemGroup>
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(ServerBuild)' == ''">
     <Exec Command="xcopy /e /y &quot;$(TargetPath)&quot; &quot;D:\My Code\VNet bin\&quot;" />
